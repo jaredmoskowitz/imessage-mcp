@@ -1,0 +1,21 @@
+[project]
+name = "imessage-mcp"
+version = "0.1.0"
+description = "MCP server for reading iMessage data on macOS"
+requires-python = ">=3.12"
+dependencies = [
+    "mcp[cli]>=1.9.0",
+]
+
+[project.scripts]
+imessage-mcp = "imessage_mcp:main"
+
+[build-system]
+requires = ["setuptools>=75.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
