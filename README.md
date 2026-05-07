@@ -1,6 +1,8 @@
 # imessage-mcp
 
-A read-only MCP server that exposes your iMessage data to Claude Code and Claude Desktop, with automatic contact name resolution.
+A read-only MCP server for macOS that exposes your iMessage data over the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/), with automatic contact name resolution.
+
+Use it with **Cursor**, **OpenAI Codex**, **Claude Desktop**, **Claude Code**, or any other MCP-capable client your terminal editor supports.
 
 ## Setup
 
@@ -18,10 +20,27 @@ pip install -e .
 The server needs to read `~/Library/Messages/chat.db` and the Contacts database. Grant **Full Disk Access** to the app that runs the server:
 
 1. Open **System Settings → Privacy & Security → Full Disk Access**
-2. For **Claude Code**: add your terminal app (e.g., Terminal, iTerm2, Ghostty)
-3. For **Claude Desktop**: add the Claude app
+2. For **terminal-based MCP** (Cursor agent, Claude Code, Codex in the terminal, etc.): add your terminal app (e.g., Terminal, iTerm2, Ghostty, Warp).
+3. For **Claude Desktop**: add the Claude app itself.
 
-### 3. Configure Claude Code
+### 3. Configure Cursor
+
+In **Cursor Settings → MCP** (or your user MCP config, depending on Cursor version), register a server with the same **`command`** and **`args`** as in the Claude Code snippet below — only the host config file/path differs.
+
+Example shape:
+
+```json
+{
+  "mcpServers": {
+    "imessage": {
+      "command": "<path-to-this-repo>/.venv/bin/python",
+      "args": ["-m", "imessage_mcp"]
+    }
+  }
+}
+```
+
+### 4. Configure Claude Code
 
 Add to `~/.claude/settings.json`:
 
@@ -36,7 +55,7 @@ Add to `~/.claude/settings.json`:
 }
 ```
 
-### 4. Configure Claude Desktop
+### 5. Configure Claude Desktop
 
 Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
