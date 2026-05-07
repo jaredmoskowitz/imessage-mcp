@@ -1,0 +1,44 @@
+---
+description: Rules for the imessage-mcp Python MCP server
+globs: src/**/*.py,tests/**/*.py
+alwaysApply: false
+---
+
+# imessage-mcp engineering rules
+
+This is a read-only macOS MCP server. See [AGENTS.md](mdc:AGENTS.md) for full context.
+
+## Read-only by construction
+
+- Every SQLite connection MUST open with `mode=ro` URI flag. Pattern: `sqlite3.connect(f"file:{path}?mode=ro", uri=True)`.
+- Never call `INSERT`, `UPDATE`, `DELETE`, `CREATE`, `ALTER`, `DROP`, `ATTACH`, or `PRAGMA` writes against `chat.db` or the Contacts database.
+- If a feature seems to require writes, stop and surface the question — don't quietly add a writable connection.
+
+## No network, no telemetry
+
+- Do not add `requests`, `httpx`, `urllib`, `socket`, or any other network library.
+- Do not add analytics, error reporting, or remote logging.
+- Tests must not hit the network either.
+
+## Privacy hygiene
+
+- Do not log message bodies, contact identifiers (phone numbers, emails, handles), or contact names at `INFO` level or above.
+- Test fixtures must be synthetic. Never commit real iMessage data, even sanitized.
+
+## MCP tool docstrings are user-facing
+
+- Tools registered with `@mcp.tool()` in [src/imessage_mcp/server.py](mdc:src/imessage_mcp/server.py) expose their docstring directly to AI clients.
+- Any behavior change requires a docstring update in the same commit.
+- Add a corresponding test in [tests/test_server.py](mdc:tests/test_server.py) and update the `## Tools` section in [README.md](mdc:README.md).
+
+## Style
+
+- Type hints required on all function parameters and return types.
+- Use `pathlib.Path` for filesystem paths.
+- Reuse `_apple_ts_to_iso` and `_iso_to_apple_ts` for Apple-epoch timestamp conversion — do not reimplement.
+- Tools return JSON strings via `json.dumps(..., indent=2)`. Keep this consistent.
+
+## Tests
+
+- `pytest` is the test runner. `testpaths = ["tests"]` is configured in [pyproject.toml](mdc:pyproject.toml).
+- Tests build their own SQLite databases with the same schema as `chat.db`. Never point tests at `~/Library/Messages/chat.db`.
