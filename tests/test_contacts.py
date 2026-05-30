@@ -99,3 +99,40 @@ class TestContactResolver:
     def test_missing_db_degrades_gracefully(self, tmp_path):
         resolver = ContactResolver(str(tmp_path / "nonexistent.db"))
         assert resolver.resolve("+15551234567") == "+15551234567"
+
+    def _make_db(self, path, pk, first, last, phone):
+        conn = sqlite3.connect(str(path))
+        conn.execute(
+            "CREATE TABLE ZABCDRECORD (Z_PK INTEGER PRIMARY KEY, ZFIRSTNAME TEXT, ZLASTNAME TEXT, ZORGANIZATION TEXT)"
+        )
+        conn.execute(
+            "CREATE TABLE ZABCDPHONENUMBER (Z_PK INTEGER PRIMARY KEY, ZOWNER INTEGER, ZFULLNUMBER TEXT)"
+        )
+        conn.execute("CREATE TABLE ZABCDEMAILADDRESS (Z_PK INTEGER PRIMARY KEY, ZOWNER INTEGER, ZADDRESS TEXT)")
+        conn.execute(
+            "INSERT INTO ZABCDRECORD (Z_PK, ZFIRSTNAME, ZLASTNAME) VALUES (?, ?, ?)", (pk, first, last)
+        )
+        conn.execute(
+            "INSERT INTO ZABCDPHONENUMBER (Z_PK, ZOWNER, ZFULLNUMBER) VALUES (?, ?, ?)", (pk, pk, phone)
+        )
+        conn.commit()
+        conn.close()
+
+    def test_discovers_dbs_in_sources_subdir(self, tmp_path, monkeypatch):
+        # Mirror the real macOS layout: a near-empty top-level db plus the
+        # populated one under Sources/<UUID>/.
+        self._make_db(tmp_path / "AddressBook-v22.abcddb", 1, "Top", "Level", "+15550000001")
+        sources = tmp_path / "Sources" / "ABCD-UUID"
+        sources.mkdir(parents=True)
+        self._make_db(sources / "AddressBook-v22.abcddb", 1, "Ryan", "Newsom", "+18586037832")
+
+        monkeypatch.setattr("imessage_mcp.contacts.DEFAULT_ADDRESSBOOK_DIR", tmp_path)
+        resolver = ContactResolver()
+
+        assert resolver.resolve("+18586037832") == "Ryan Newsom"
+        assert resolver.resolve("+15550000001") == "Top Level"
+
+    def test_missing_default_dir_degrades_gracefully(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("imessage_mcp.contacts.DEFAULT_ADDRESSBOOK_DIR", tmp_path / "nope")
+        resolver = ContactResolver()
+        assert resolver.resolve("+18586037832") == "+18586037832"

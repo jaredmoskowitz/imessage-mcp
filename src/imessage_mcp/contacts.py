@@ -3,9 +3,7 @@ import sqlite3
 from pathlib import Path
 
 
-DEFAULT_ADDRESSBOOK_PATH = str(
-    Path.home() / "Library" / "Application Support" / "AddressBook" / "AddressBook-v22.abcddb"
-)
+DEFAULT_ADDRESSBOOK_DIR = Path.home() / "Library" / "Application Support" / "AddressBook"
 
 
 def normalize_phone(phone: str) -> str:
@@ -17,10 +15,28 @@ def normalize_phone(phone: str) -> str:
 
 
 class ContactResolver:
-    def __init__(self, db_path: str = DEFAULT_ADDRESSBOOK_PATH):
+    def __init__(self, db_path: str | None = None):
+        """Resolve phone/email identifiers to contact names.
+
+        When db_path is given, only that file is read (used by tests). In
+        production (db_path is None) every AddressBook-v22.abcddb under
+        DEFAULT_ADDRESSBOOK_DIR is loaded and merged: macOS keeps the real,
+        populated database in Sources/<UUID>/AddressBook-v22.abcddb, while the
+        top-level file is usually nearly empty, so reading just one misses
+        almost every contact.
+        """
         self._phone_map: dict[str, str] = {}
         self._email_map: dict[str, str] = {}
-        self._load(db_path)
+        for path in self._discover_dbs(db_path):
+            self._load(path)
+
+    @staticmethod
+    def _discover_dbs(db_path: str | None) -> list[str]:
+        if db_path is not None:
+            return [db_path]
+        if not DEFAULT_ADDRESSBOOK_DIR.exists():
+            return []
+        return [str(p) for p in DEFAULT_ADDRESSBOOK_DIR.rglob("*.abcddb")]
 
     def _load(self, db_path: str) -> None:
         if not Path(db_path).exists():
